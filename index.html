@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Car Entertainment</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #f0f7ff;
+  --card: #ffffff;
+  --blue1: #dbeafe;
+  --blue2: #bfdbfe;
+  --blue3: #93c5fd;
+  --blue4: #60a5fa;
+  --blue5: #3b82f6;
+  --blue6: #2563eb;
+  --text1: #1e3a5f;
+  --text2: #3b5f8a;
+  --text3: #7da4cc;
+  --pink: #fce7f3;
+  --pinkA: #ec4899;
+  --mint: #d1fae5;
+  --mintA: #10b981;
+  --lav: #ede9fe;
+  --lavA: #8b5cf6;
+  --yel: #fef9c3;
+  --yelA: #f59e0b;
+  --shadow: 0 4px 20px rgba(59,130,246,0.10);
+  --shadow2: 0 8px 32px rgba(59,130,246,0.16);
+  --r: 18px;
+  --r2: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  font-family: 'Quicksand', sans-serif;
+  background: var(--bg);
+  color: var(--text1);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 76px;
+}
+
+/* LOADER */
+#loader {
+  position: fixed; inset: 0;
+  background: linear-gradient(145deg, #a8d4ff, #c4b5fd);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 999;
+  gap: 16px;
+  transition: opacity 0.4s;
+}
+#loader img { width: 72px; height: 72px; border-radius: 20px; animation: pulse 1.4s ease-in-out infinite; }
+#loader p { color: white; font-weight: 700; font-size: 14px; opacity: 0.85; }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+#loader.hide { opacity: 0; pointer-events: none; }
+
+/* HEADER */
+.header {
+  background: linear-gradient(135deg, #5ba8fa 0%, #a78bfa 100%);
+  padding: 18px 18px 24px;
+  position: relative; overflow: hidden;
+}
+.header::before {
+  content:''; position:absolute; top:-50px; right:-30px;
+  width:160px; height:160px;
+  background:rgba(255,255,255,0.12); border-radius:50%;
+}
+.header::after {
+  content:''; position:absolute; bottom:-40px; left:20px;
+  width:120px; height:120px;
+  background:rgba(255,255,255,0.07); border-radius:50%;
+}
+.header-inner { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
+.header-logo {
+  width:46px; height:46px; border-radius:14px;
+  background:rgba(255,255,255,0.25);
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; flex-shrink:0;
+}
+.header-logo img { width:100%; height:100%; object-fit:cover; }
+.header-title { color:white; }
+.header-title h1 { font-family:'Nunito',sans-serif; font-size:17px; font-weight:900; }
+.header-title p { font-size:11px; opacity:.8; margin-top:1px; }
+.header-coins {
+  margin-left:auto;
+  background:rgba(255,255,255,0.22);
+  border:1px solid rgba(255,255,255,0.3);
+  border-radius:20px; padding:5px 12px;
+  color:white; font-size:13px; font-weight:700;
+  display:flex; align-items:center; gap:4px; flex-shrink:0;
+}
+
+/* TABS */
+.tabs {
+  display:flex; background:white;
+  border-bottom:2px solid var(--blue1);
+  position:sticky; top:0; z-index:100;
+  overflow-x:auto; scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar { display:none; }
+.tab {
+  flex:1; min-width:58px;
+  padding:10px 4px;
+  text-align:center; font-size:10px; font-weight:700;
+  color:var(--text3); cursor:pointer;
+  border-bottom:3px solid transparent;
+  transition:all .2s; white-space:nowrap;
+}
+.tab.active { color:var(--blue5); border-bottom-color:var(--blue5); }
+.tab-icon { font-size:16px; display:block; margin-bottom:2px; }
+
+/* PAGES */
+.page { display:none; padding:14px; animation:fadeUp .25s ease; }
+.page.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+
+/* CARD */
+.card {
+  background:white; border-radius:var(--r);
+  padding:16px; box-shadow:var(--shadow);
+  margin-bottom:12px;
+}
+.card-title {
+  font-family:'Nunito',sans-serif;
+  font-size:11px; font-weight:900;
+  color:var(--text3); text-transform:uppercase;
+  letter-spacing:.6px; margin-bottom:12px;
+  display:flex; align-items:center; gap:6px;
+}
+
+/* PROFILE */
+.profile-hero {
+  background:linear-gradient(135deg,#dbeafe,#ede9fe);
+  border-radius:var(--r); padding:22px;
+  text-align:center; margin-bottom:12px;
+  position:relative; overflow:hidden;
+}
+.profile-hero::after {
+  content:'✦'; position:absolute;
+  top:14px; right:18px;
+  font-size:20px; opacity:.15; color:var(--blue5);
+}
+.profile-avatar {
+  width:78px; height:78px; border-radius:50%;
+  margin:0 auto 10px;
+  border:3px solid white;
+  box-shadow:0 4px 16px rgba(59,130,246,.2);
+  overflow:hidden; background:var(--blue2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:30px;
+}
+.profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-name {
+  font-family:'Nunito',sans-serif;
+  font-size:19px; font-weight:900; color:var(--text1);
+}
+.profile-sub { font-size:12px; color:var(--text2); margin-top:2px; }
+.badge {
+  display:inline-block; margin-top:7px;
+  padding:4px 13px; border-radius:20px;
+  font-size:11px; font-weight:700;
+}
+.badge-idol { background:var(--pink); color:var(--pinkA); }
+.badge-fan { background:var(--blue1); color:var(--blue6); }
+.badge-trainee { background:var(--lav); color:var(--lavA); }
+
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.stat-box {
+  background:white; border-radius:var(--r2);
+  padding:12px 8px; text-align:center;
+  box-shadow:var(--shadow);
+}
+.stat-val {
+  font-family:'Nunito',sans-serif;
+  font-size:19px; font-weight:900; color:var(--blue5);
+}
+.stat-lbl { font-size:10px; color:var(--text3); font-weight:600; margin-top:2px; }
+
+.info-row {
+  display:flex; align-items:center;
+  padding:9px 0; border-bottom:1px solid var(--blue1); gap:10px;
+}
+.info-row:last-child { border-bottom:none; }
+.info-icon { font-size:16px; width:26px; text-align:center; flex-shrink:0; }
+.info-lbl { font-size:11px; color:var(--text3); font-weight:600; }
+.info-val { font-size:13px; font-weight:700; color:var(--text1); margin-top:1px; }
+
+/* IDOL CARD in profile */
+.idol-card {
+  background:linear-gradient(135deg,var(--pink),var(--lav));
+  border-radius:var(--r); padding:16px;
+  display:flex; gap:14px; align-items:center;
+  margin-bottom:12px;
+}
+.idol-photo {
+  width:62px; height:62px; border-radius:14px;
+  overflow:hidden; border:2px solid white;
+  flex-shrink:0; background:white;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px;
+}
+.idol-photo img { width:100%; height:100%; object-fit:cover; }
+.idol-info h3 { font-family:'Nunito',sans-serif; font-size:16px; font-weight:900; color:var(--text1); }
+.idol-info p { font-size:12px; color:var(--text2); margin-top:3px; }
+
+/* SETTINGS FORM */
+.form-group { margin-bottom:14px; }
+.form-label {
+  font-size:11px; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.4px;
+  margin-bottom:6px; display:block;
+}
+.form-input {
+  width:100%; padding:12px 14px;
+  border:2px solid var(--blue1); border-radius:var(--r2);
+  font-family:'Quicksand',sans-serif; font-size:14px;
+  color:var(--text1); background:var(--bg);
+  outline:none; transition:border .2s;
+  -webkit-appearance:none;
+}
+.form-input:focus { border-color:var(--blue4); background:white; }
+
+.photo-upload-area {
+  border:2px dashed var(--blue3); border-radius:var(--r);
+  padding:24px; text-align:center;
+  cursor:pointer; transition:all .2s; background:var(--bg);
+  position:relative; overflow:hidden;
+}
+.photo-upload-area:active { background:var(--blue1); }
+.photo-upload-area img.preview {
+  width:100px; height:100px; border-radius:50%;
+  object-fit:cover; margin:0 auto 10px;
+  display:block; border:3px solid white;
+  box-shadow:var(--shadow);
+}
+.upload-hint { font-size:13px; color:var(--text3); font-weight:600; }
+.upload-hint span { display:block; font-size:11px; margin-top:4px; opacity:.7; }
+input[type=file] { display:none; }
+
+/* BUTTONS */
+.btn {
+  width:100%; padding:14px;
+  border:none; border-radius:var(--r2);
+  font-family:'Nunito',sans-serif;
+  font-size:14px; font-weight:800;
+  cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.btn-primary {
+  background:linear-gradient(135deg,#5ba8fa,#a78bfa);
+  color:white; box-shadow:0 4px 16px rgba(91,168,250,.35);
+}
+.btn-primary:active { transform:scale(.97); }
+.btn-soft {
+  background:var(--blue1); color:var(--blue6);
+}
+.btn-danger { background:var(--pink); color:var(--pinkA); }
+.btn-sm {
+  width:auto; padding:8px 16px;
+  font-size:12px; border-radius:20px;
+}
+.btn:disabled { opacity:.5; pointer-events:none; }
+
+/* CHART */
+.chart-item {
+  display:flex; align-items:center;
+  padding:12px 0; border-bottom:1px solid var(--blue1); gap:12px;
+}
+.chart-item:last-child { border-bottom:none; }
+.chart-rank {
+  font-family:'Nunito',sans-serif;
+  font-size:16px; font-weight:900; width:28px; text-align:center;
+}
+.rank-1 { color:#f59e0b; }
+.rank-2 { color:#94a3b8; }
+.rank-3 { color:#b97a47; }
+.chart-info { flex:1; }
+.chart-name { font-weight:700; font-size:14px; }
+.chart-pts { font-size:11px; color:var(--text3); margin-top:2px; }
+.chart-pop {
+  font-family:'Nunito',sans-serif;
+  font-size:13px; font-weight:800; color:var(--blue5);
+}
+
+/* GROUP LIST */
+.group-card {
+  background:white; border-radius:var(--r);
+  padding:16px; box-shadow:var(--shadow);
+  margin-bottom:12px; cursor:pointer;
+  transition:all .2s;
+}
+.group-card:active { transform:scale(.98); box-shadow:var(--shadow2); }
+.group-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.group-icon {
+  width:46px; height:46px; border-radius:14px;
+  background:linear-gradient(135deg,var(--blue1),var(--lav));
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.group-name {
+  font-family:'Nunito',sans-serif;
+  font-size:15px; font-weight:900;
+}
+.group-agency { font-size:11px; color:var(--text3); margin-top:2px; }
+.group-stats { display:flex; gap:10px; margin-bottom:12px; }
+.group-stat {
+  flex:1; background:var(--bg);
+  border-radius:var(--r2); padding:8px;
+  text-align:center;
+}
+.group-stat-val { font-family:'Nunito',sans-serif; font-size:14px; font-weight:900; color:var(--blue5); }
+.group-stat-lbl { font-size:10px; color:var(--text3); font-weight:600; }
+
+/* MEMBER PHOTOS STRIP */
+.member-strip { display:flex; gap:8px; align-items:center; overflow-x:auto; padding-bottom:4px; scrollbar-width:none; }
+.member-strip::-webkit-scrollbar { display:none; }
+.member-bubble { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; }
+.member-bubble .m-photo {
+  width:44px; height:44px; border-radius:50%;
+  overflow:hidden; border:2px solid var(--blue2);
+  background:var(--blue1);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.member-bubble .m-photo img { width:100%; height:100%; object-fit:cover; }
+.member-bubble .m-name { font-size:10px; font-weight:700; color:var(--text2); max-width:48px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.member-bubble .m-handle { font-size:9px; color:var(--text3); max-width:48px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--text1); color:white;
+  padding:10px 20px; border-radius:20px;
+  font-size:13px; font-weight:700;
+  opacity:0; transition:all .3s; z-index:500;
+  white-space:nowrap; max-width:90vw; text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.2);
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position:fixed; bottom:0; left:0; right:0;
+  background:white;
+  border-top:1px solid var(--blue1);
+  display:flex; padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+  z-index:200;
+}
+.nav-item {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; gap:3px;
+  font-size:9px; font-weight:700; color:var(--text3);
+  cursor:pointer; padding:4px;
+  transition:color .2s;
+}
+.nav-item.active { color:var(--blue5); }
+.nav-icon { font-size:20px; }
+
+/* MODAL */
+.modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(30,58,95,.4); backdrop-filter:blur(4px);
+  z-index:300; display:none;
+  align-items:flex-end; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:white; border-radius:24px 24px 0 0;
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  width:100%; max-height:85vh; overflow-y:auto;
+  animation:slideUp .3s ease;
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:none} }
+.modal-handle {
+  width:36px; height:4px; background:var(--blue2);
+  border-radius:2px; margin:0 auto 18px;
+}
+.modal-title {
+  font-family:'Nunito',sans-serif; font-size:18px; font-weight:900;
+  color:var(--text1); margin-bottom:16px;
+}
+
+/* EMPTY STATE */
+.empty {
+  text-align:center; padding:40px 20px;
+  color:var(--text3);
+}
+.empty-icon { font-size:48px; margin-bottom:12px; }
+.empty p { font-size:14px; font-weight:600; }
+
+/* DIVIDER */
+.divider { height:1px; background:var(--blue1); margin:12px 0; }
+
+/* WEEK BADGE */
+.week-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  background:var(--yel); color:var(--yelA);
+  padding:4px 10px; border-radius:20px;
+  font-size:11px; font-weight:700; margin-bottom:12px;
+}
+
+/* VOTE BTN */
+.vote-btn {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px;
+  background:var(--bg); border-radius:var(--r2);
+  margin-bottom:8px; cursor:pointer;
+  border:2px solid transparent; transition:all .2s;
+}
+.vote-btn:active { border-color:var(--blue3); background:var(--blue1); }
+.vote-name { font-weight:700; font-size:13px; }
+.vote-pts { font-size:11px; color:var(--text3); }
+.vote-icon { font-size:18px; }
+
+/* LOADING SPINNER */
+.spinner {
+  display:inline-block; width:20px; height:20px;
+  border:2px solid var(--blue2); border-top-color:var(--blue5);
+  border-radius:50%; animation:spin .7s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-state { text-align:center; padding:30px; color:var(--text3); }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <img src="https://files.catbox.moe/vryitr.png" alt="CE">
+  <p>Car Entertainment</p>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="header-logo">
+      <img src="https://files.catbox.moe/vryitr.png" alt="CE">
+    </div>
+    <div class="header-title">
+      <h1>Car Entertainment</h1>
+      <p id="header-sub">K-pop Label</p>
+    </div>
+    <div class="header-coins">🪙 <span id="header-coins">0</span></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('home')">
+    <span class="tab-icon">🏠</span>Home
+  </div>
+  <div class="tab" onclick="switchTab('groups')">
+    <span class="tab-icon">🎤</span>Grup
+  </div>
+  <div class="tab" onclick="switchTab('chart')">
+    <span class="tab-icon">🏆</span>Chart
+  </div>
+  <div class="tab" onclick="switchTab('vote')">
+    <span class="tab-icon">🗳️</span>Vote
+  </div>
+  <div class="tab" onclick="switchTab('profile')">
+    <span class="tab-icon">👤</span>Profil
+  </div>
+  <div class="tab" onclick="switchTab('settings')">
+    <span class="tab-icon">⚙️</span>Settings
+  </div>
+</div>
+
+<!-- ═══════════════ HOME ═══════════════ -->
+<div id="page-home" class="page active">
+  <div class="card">
+    <div class="card-title">🎁 Daily Check-in</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Ambil koin harianmu!</p>
+    <button class="btn btn-primary" id="daily-btn" onclick="doDaily()">🎁 Ambil Koin Harian</button>
+  </div>
+
+  <div class="card" id="idol-quick" style="display:none">
+    <div class="card-title">🌟 Panel Idol</div>
+    <div id="idol-activities"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Top 3 Minggu Ini</div>
+    <div id="home-chart"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ GROUPS ═══════════════ -->
+<div id="page-groups" class="page">
+  <div id="groups-list">
+    <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ CHART ═══════════════ -->
+<div id="page-chart" class="page">
+  <div class="card">
+    <div class="card-title">🏆 Weekly Chart</div>
+    <div class="week-badge" id="week-label">📅 —</div>
+    <div id="chart-list">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ VOTE ═══════════════ -->
+<div id="page-vote" class="page">
+  <div class="card">
+    <div class="card-title">🗳️ Vote Minggu Ini</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-size:13px;color:var(--text2)">Sisa vote:</span>
+      <span id="votes-left-badge" style="background:var(--blue1);color:var(--blue6);padding:4px 12px;border-radius:20px;font-weight:800;font-size:13px">3</span>
+    </div>
+    <div id="vote-list">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PROFILE ═══════════════ -->
+<div id="page-profile" class="page">
+  <div id="profile-content">
+    <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ SETTINGS ═══════════════ -->
+<div id="page-settings" class="page">
+  <div id="settings-content">
+    <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- GROUP DETAIL MODAL -->
+<div class="modal-overlay" id="group-modal" onclick="closeModal('group-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="group-modal-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════
+const WORKER_URL = 'https://rough-haze-9bbb.ahmadadrian737.workers.dev'; // ganti dengan URL worker kamu
+
+// ══════════════════════════════════════
+// TELEGRAM INIT
+// ══════════════════════════════════════
+const tg = window.Telegram?.WebApp;
+let userId = null;
+let userData = null;
+let idolData = null;
+let groupData = null;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#5ba8fa');
+  const u = tg.initDataUnsafe?.user;
+  if (u) {
+    userId = u.id;
+    document.getElementById('header-sub').textContent = u.first_name || 'Player';
+  }
+}
+
+// ══════════════════════════════════════
+// API
+// ══════════════════════════════════════
+async function api(action, body = {}) {
+  try {
+    const r = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, user_id: userId, init_data: tg?.initData || '', ...body })
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+const tabLoaded = {};
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    const names = ['home','groups','chart','vote','profile','settings'];
+    el.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (!tabLoaded[name]) { tabLoaded[name] = true; loadTab(name); }
+}
+
+function loadTab(name) {
+  if (name === 'groups') loadGroups();
+  else if (name === 'chart') loadChart();
+  else if (name === 'vote') loadVote();
+  else if (name === 'profile') loadProfile();
+  else if (name === 'settings') loadSettings();
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+async function init() {
+  if (!userId) {
+    document.getElementById('loader').classList.add('hide');
+    showToast('Buka lewat Telegram ya!');
+    return;
+  }
+  const res = await api('get_user');
+  if (res.ok) {
+    userData = res.user;
+    idolData = res.idol;
+    groupData = res.group;
+    document.getElementById('header-coins').textContent = (userData.coins || 0).toLocaleString();
+    loadHome();
+  }
+  document.getElementById('loader').classList.add('hide');
+}
+
+// ══════════════════════════════════════
+// HOME
+// ══════════════════════════════════════
+async function loadHome() {
+  // Cek daily
+  if (userData?.last_daily === todayStr()) {
+    const btn = document.getElementById('daily-btn');
+    btn.textContent = '✅ Sudah Check-in Hari Ini';
+    btn.disabled = true;
+  }
+
+  // Idol quick panel
+  if (idolData && groupData?.status === 'active') {
+    document.getElementById('idol-quick').style.display = 'block';
+    renderActivities();
+  }
+
+  // Top 3 chart
+  const res = await api('get_chart');
+  const el = document.getElementById('home-chart');
+  if (res.ok && res.groups?.length) {
+    const medals = ['🥇','🥈','🥉'];
+    el.innerHTML = res.groups.slice(0,3).map((g,i) => `
+      <div class="chart-item">
+        <div class="chart-rank ${['rank-1','rank-2','rank-3'][i]}">${medals[i]}</div>
+        <div class="chart-info">
+          <div class="chart-name">${g.name}</div>
+          <div class="chart-pts">${(g.weekly_popularity||0).toLocaleString()} pts minggu ini</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text3);text-align:center;padding:10px">Belum ada data chart</div>';
+  }
+}
+
+function renderActivities() {
+  const acts = [
+    { key:'dance',    name:'💃 Dance',    cd:6  },
+    { key:'vocal',    name:'🎤 Vocal',    cd:6  },
+    { key:'acting',   name:'🎭 Acting',   cd:8  },
+    { key:'physical', name:'🏋️ Physical', cd:12 },
+    { key:'photo',    name:'📸 Photo',    cd:24 },
+    { key:'record',   name:'🎵 Record',   cd:12 },
+  ];
+  const el = document.getElementById('idol-activities');
+  el.innerHTML = acts.map(a => {
+    const lastKey = `last_${a.key}`;
+    const cdSecs = cooldownLeft(idolData[lastKey], a.cd);
+    const ready = cdSecs <= 0;
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--blue1)">
+        <span style="font-size:13px;font-weight:600">${a.name}</span>
+        <button class="btn btn-sm ${ready ? 'btn-primary' : 'btn-soft'}"
+          onclick="doTrain('${a.key}')" ${ready ? '' : 'disabled'}>
+          ${ready ? 'Mulai' : fmtCd(cdSecs)}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function cooldownLeft(lastStr, hours) {
+  if (!lastStr) return 0;
+  const last = new Date(lastStr).getTime();
+  const ready = last + hours * 3600000;
+  return Math.max(0, Math.floor((ready - Date.now()) / 1000));
+}
+
+function fmtCd(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return h > 0 ? `${h}j ${m}m` : `${m}m`;
+}
+
+function todayStr() {
+  const now = new Date();
+  // WIB = UTC+7
+  const wib = new Date(now.getTime() + 7 * 3600000);
+  return wib.toISOString().split('T')[0];
+}
+
+async function doDaily() {
+  const btn = document.getElementById('daily-btn');
+  btn.disabled = true;
+  const res = await api('daily');
+  if (res.ok) {
+    userData.coins = res.coins;
+    document.getElementById('header-coins').textContent = res.coins.toLocaleString();
+    btn.textContent = '✅ Sudah Check-in Hari Ini';
+    showToast(`🎁 +${res.reward} koin!`);
+  } else {
+    showToast(res.error || 'Gagal');
+    btn.disabled = false;
+  }
+}
+
+async function doTrain(key) {
+  const res = await api('train', { activity: key });
+  if (res.ok) {
+    idolData = res.idol;
+    renderActivities();
+    showToast(`✅ ${res.activity} selesai! +${res.pop} popularity`);
+  } else {
+    showToast(res.error || 'Gagal');
+  }
+}
+
+// ══════════════════════════════════════
+// GROUPS
+// ══════════════════════════════════════
+async function loadGroups() {
+  const res = await api('get_groups');
+  const el = document.getElementById('groups-list');
+  if (!res.ok || !res.groups?.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎤</div><p>Belum ada grup yang debut</p></div>`;
+    return;
+  }
+  el.innerHTML = res.groups.map(g => renderGroupCard(g)).join('');
+}
+
+function renderGroupCard(g) {
+  const members = g.members || [];
+  const memberHtml = members.map(m => `
+    <div class="member-bubble">
+      <div class="m-photo">
+        ${m.photo_file_id
+          ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(m.photo_file_id)}" onerror="this.style.display='none'" loading="lazy">`
+          : '🎤'}
+      </div>
+      <div class="m-name">${escHtml(m.stage_name || '?')}</div>
+      <div class="m-handle">${m.username ? '@' + escHtml(m.username) : ''}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="group-card" onclick="openGroup(${g.id})">
+      <div class="group-header">
+        <div class="group-icon">🎤</div>
+        <div>
+          <div class="group-name">${escHtml(g.name)}</div>
+          <div class="group-agency">${escHtml(g.agency_name || '—')} · ${members.length} member</div>
+        </div>
+      </div>
+      <div class="group-stats">
+        <div class="group-stat">
+          <div class="group-stat-val">${(g.popularity||0).toLocaleString()}</div>
+          <div class="group-stat-lbl">Total Pop</div>
+        </div>
+        <div class="group-stat">
+          <div class="group-stat-val">${(g.weekly_popularity||0).toLocaleString()}</div>
+          <div class="group-stat-lbl">Weekly</div>
+        </div>
+        <div class="group-stat">
+          <div class="group-stat-val">${g.post_count||0}</div>
+          <div class="group-stat-lbl">Posts</div>
+        </div>
+      </div>
+      ${memberHtml ? `<div class="member-strip">${memberHtml}</div>` : ''}
+    </div>
+  `;
+}
+
+async function openGroup(gid) {
+  const modal = document.getElementById('group-modal');
+  const content = document.getElementById('group-modal-content');
+  content.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+  modal.classList.add('open');
+
+  const res = await api('get_group_detail', { group_id: gid });
+  if (!res.ok) { content.innerHTML = '<p>Gagal memuat.</p>'; return; }
+  const g = res.group;
+  const members = g.members || [];
+
+  const memberRows = members.map(m => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--blue1)">
+      <div style="width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--blue1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid var(--blue2)">
+        ${m.photo_file_id
+          ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(m.photo_file_id)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
+          : '🎤'}
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:13px">${m.role === 'leader' ? '👑 ' : '🎤 '}${escHtml(m.stage_name||'?')}</div>
+        <div style="font-size:11px;color:var(--text3)">${m.username ? '@' + escHtml(m.username) : ''}</div>
+      </div>
+    </div>
+  `).join('');
+
+  content.innerHTML = `
+    <div class="modal-title">🎤 ${escHtml(g.name)}</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div class="stat-box"><div class="stat-val">${(g.popularity||0).toLocaleString()}</div><div class="stat-lbl">Popularity</div></div>
+      <div class="stat-box"><div class="stat-val">${(g.weekly_popularity||0).toLocaleString()}</div><div class="stat-lbl">Weekly</div></div>
+      <div class="stat-box"><div class="stat-val">${g.post_count||0}</div><div class="stat-lbl">Posts</div></div>
+    </div>
+    <div class="card-title">👥 Member</div>
+    ${memberRows}
+  `;
+}
+
+// ══════════════════════════════════════
+// CHART
+// ══════════════════════════════════════
+async function loadChart() {
+  const res = await api('get_chart');
+  const el = document.getElementById('chart-list');
+  // week label
+  const now = new Date(Date.now() + 7*3600000);
+  const week = `${now.getFullYear()}-W${String(getWeekNumber(now)).padStart(2,'0')}`;
+  document.getElementById('week-label').textContent = `📅 ${week}`;
+
+  if (!res.ok || !res.groups?.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🏆</div><p>Belum ada data</p></div>`;
+    return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = res.groups.map((g,i) => `
+    <div class="chart-item">
+      <div class="chart-rank ${i < 3 ? ['rank-1','rank-2','rank-3'][i] : ''}">${i < 3 ? medals[i] : `#${i+1}`}</div>
+      <div class="chart-info">
+        <div class="chart-name">${escHtml(g.name)}</div>
+        <div class="chart-pts">${(g.weekly_popularity||0).toLocaleString()} pts</div>
+      </div>
+      <div class="chart-pop">${(g.popularity||0).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+// ══════════════════════════════════════
+// VOTE
+// ══════════════════════════════════════
+async function loadVote() {
+  const res = await api('get_vote_data');
+  const el = document.getElementById('vote-list');
+  if (!res.ok) { el.innerHTML = '<p>Gagal memuat.</p>'; return; }
+
+  document.getElementById('votes-left-badge').textContent = res.votes_left ?? 3;
+
+  if (!res.groups?.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🗳️</div><p>Belum ada grup aktif</p></div>`;
+    return;
+  }
+
+  el.innerHTML = res.groups.map(g => `
+    <div class="vote-btn" onclick="doVote(${g.id}, '${escHtml(g.name)}')">
+      <div>
+        <div class="vote-name">🎤 ${escHtml(g.name)}</div>
+        <div class="vote-pts">${(g.weekly_popularity||0).toLocaleString()} pts minggu ini</div>
+      </div>
+      <div class="vote-icon">🗳️</div>
+    </div>
+  `).join('');
+}
+
+async function doVote(gid, gname) {
+  const res = await api('vote', { group_id: gid });
+  if (res.ok) {
+    userData.weekly_votes = res.votes_left;
+    document.getElementById('votes-left-badge').textContent = res.votes_left;
+    showToast(`✅ Vote untuk ${gname} berhasil!`);
+  } else {
+    showToast(res.error || 'Gagal vote');
+  }
+}
+
+// ══════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════
+async function loadProfile() {
+  const el = document.getElementById('profile-content');
+  if (!userData) { el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>'; return; }
+
+  const u = userData;
+  const idol = idolData;
+  const grp = groupData;
+
+  const roleLabel = idol && grp?.status === 'active' ? 'idol' : idol ? 'trainee' : 'fan';
+  const roleTxt = { idol: '🌟 Idol', trainee: '🎓 Trainee', fan: '💙 Fan' }[roleLabel];
+
+  const tgUser = tg?.initDataUnsafe?.user;
+  const avatarHtml = tgUser?.photo_url
+    ? `<img src="${tgUser.photo_url}" alt="">`
+    : (tgUser?.first_name?.[0] || '?');
+
+  let idolSection = '';
+  if (idol) {
+    idolSection = `
+      <div class="idol-card">
+        <div class="idol-photo">
+          ${idol.photo_file_id
+            ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(idol.photo_file_id)}" onerror="this.parentElement.textContent='🎤'">`
+            : '🎤'}
+        </div>
+        <div class="idol-info">
+          <h3>${escHtml(idol.stage_name || '?')}</h3>
+          <p>${grp ? `💫 ${escHtml(grp.name)}` : 'Belum punya grup'}</p>
+          ${grp ? `<p style="margin-top:3px;font-size:11px;color:var(--text3)">${grp.status === 'active' ? '✅ Aktif' : '⏳ ' + grp.status}</p>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  const fanXp = u.fan_xp || 0;
+  const fanLevel = getFanLevel(fanXp);
+
+  el.innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-avatar">${avatarHtml}</div>
+      <div class="profile-name">${escHtml(tgUser?.first_name || 'Player')}</div>
+      <div class="profile-sub">${tgUser?.username ? '@' + tgUser.username : ''}</div>
+      <span class="badge badge-${roleLabel}">${roleTxt}</span>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val">🪙 ${(u.coins||0).toLocaleString()}</div>
+        <div class="stat-lbl">Koin</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">${u.weekly_votes ?? 3}</div>
+        <div class="stat-lbl">Sisa Vote</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">${fanLevel.level}</div>
+        <div class="stat-lbl">${fanLevel.name}</div>
+      </div>
+    </div>
+
+    ${idolSection}
+
+    <div class="card">
+      <div class="card-title">📋 Info</div>
+      <div class="info-row">
+        <div class="info-icon">❤️</div>
+        <div>
+          <div class="info-lbl">Fan Level</div>
+          <div class="info-val">${fanLevel.name} (${fanXp.toLocaleString()} XP)</div>
+        </div>
+      </div>
+      ${idol ? `
+      <div class="info-row">
+        <div class="info-icon">🎤</div>
+        <div>
+          <div class="info-lbl">Stage Name</div>
+          <div class="info-val">${escHtml(idol.stage_name||'—')}</div>
+        </div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function getFanLevel(xp) {
+  const levels = [
+    { min: 0,    level: 1, name: '🎧 Casual' },
+    { min: 500,  level: 2, name: '💙 Fan' },
+    { min: 1500, level: 3, name: '⭐ Stan' },
+    { min: 3500, level: 4, name: '🔥 Die-hard' },
+    { min: 7000, level: 5, name: '👑 Ultimate' },
+  ];
+  let r = levels[0];
+  for (const l of levels) { if (xp >= l.min) r = l; }
+  return r;
+}
+
+// ══════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════
+async function loadSettings() {
+  const el = document.getElementById('settings-content');
+  if (!userData) { el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>'; return; }
+
+  const idol = idolData;
+  if (!idol) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">⚙️ Settings</div>
+        <div class="empty"><div class="empty-icon">🎤</div><p>Daftar jadi idol dulu di bot!</p></div>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">🎤 Edit Profil Idol</div>
+
+      <div class="form-group">
+        <label class="form-label">Stage Name</label>
+        <input class="form-input" id="input-stage-name" type="text"
+          value="${escHtml(idol.stage_name || '')}"
+          placeholder="Nama panggungmu" maxlength="30">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Foto Muse</label>
+        <div class="photo-upload-area" onclick="document.getElementById('muse-input').click()">
+          ${idol.photo_file_id
+            ? `<img class="preview" id="muse-preview"
+                src="${WORKER_URL}/photo?file_id=${encodeURIComponent(idol.photo_file_id)}"
+                onerror="this.style.display='none'">`
+            : '<div id="muse-preview"></div>'}
+          <div class="upload-hint">📸 Tap untuk ganti foto
+            <span>JPG / PNG · Maks 5MB</span>
+          </div>
+        </div>
+        <input type="file" id="muse-input" accept="image/*" onchange="previewMuse(this)">
+      </div>
+
+      <button class="btn btn-primary" onclick="saveIdolSettings()">💾 Simpan Perubahan</button>
+    </div>
+  `;
+}
+
+function previewMuse(input) {
+  if (!input.files?.length) return;
+  const file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) { showToast('Foto terlalu besar (maks 5MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    let prev = document.getElementById('muse-preview');
+    if (!prev || prev.tagName !== 'IMG') {
+      prev = document.createElement('img');
+      prev.id = 'muse-preview';
+      prev.className = 'preview';
+      document.querySelector('.photo-upload-area').prepend(prev);
+    }
+    prev.src = e.target.result;
+    prev.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveIdolSettings() {
+  const stageName = document.getElementById('input-stage-name').value.trim();
+  if (!stageName || stageName.length < 2) { showToast('Stage name minimal 2 karakter'); return; }
+
+  const fileInput = document.getElementById('muse-input');
+  const file = fileInput?.files?.[0];
+
+  let photoBase64 = null;
+  if (file) {
+    photoBase64 = await toBase64(file);
+  }
+
+  const btn = document.querySelector('#page-settings .btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+
+  const res = await api('save_idol_settings', {
+    stage_name: stageName,
+    photo_base64: photoBase64,
+  });
+
+  btn.disabled = false;
+  btn.textContent = '💾 Simpan Perubahan';
+
+  if (res.ok) {
+    idolData = res.idol;
+    showToast('✅ Profil idol berhasil disimpan!');
+    tabLoaded['profile'] = false; // force reload profile
+  } else {
+    showToast(res.error || 'Gagal menyimpan');
+  }
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ══════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════
+// START
+// ══════════════════════════════════════
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
+
