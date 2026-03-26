@@ -465,6 +465,9 @@ input[type=file] { display:none; }
   <div class="tab" onclick="switchTab('profile')">
     <span class="tab-icon">👤</span>Profil
   </div>
+  <div class="tab" onclick="switchTab('bubble')">
+    <span class="tab-icon">📱</span>Bubble
+  </div>
   <div class="tab" onclick="switchTab('settings')">
     <span class="tab-icon">⚙️</span>Settings
   </div>
@@ -525,6 +528,21 @@ input[type=file] { display:none; }
 <div id="page-profile" class="page">
   <div id="profile-content">
     <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════ BUBBLE ═══════════════ -->
+<div id="page-bubble" class="page">
+  <div id="bubble-content">
+    <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- BUBBLE POST MODAL -->
+<div class="modal-overlay" id="bubble-modal" onclick="closeModal('bubble-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="bubble-modal-content"></div>
   </div>
 </div>
 
@@ -604,7 +622,7 @@ function showToast(msg, duration = 2500) {
 const tabLoaded = {};
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((el, i) => {
-    const names = ['home','groups','chart','vote','profile','settings'];
+    const names = ['home','groups','chart','vote','profile','bubble','settings'];
     el.classList.toggle('active', names[i] === name);
   });
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -617,6 +635,7 @@ function loadTab(name) {
   else if (name === 'chart') loadChart();
   else if (name === 'vote') loadVote();
   else if (name === 'profile') loadProfile();
+  else if (name === 'bubble') loadBubble();
   else if (name === 'settings') loadSettings();
 }
 
@@ -1055,6 +1074,15 @@ async function loadSettings() {
         <input type="file" id="muse-input" accept="image/*" onchange="previewMuse(this)">
       </div>
 
+      <div class="form-group">
+        <label class="form-label">Emoji Signature</label>
+        <input class="form-input" id="input-emoji" type="text"
+          value="${escHtml(idol.idol_emoji || '✨')}"
+          placeholder="1 emoji" maxlength="8"
+          style="font-size:22px;text-align:center;letter-spacing:4px">
+        <p style="font-size:11px;color:var(--text3);margin-top:4px">Muncul di setiap Bubble post kamu</p>
+      </div>
+
       <button class="btn btn-primary" onclick="saveIdolSettings()">💾 Simpan Perubahan</button>
     </div>
   `;
@@ -1095,9 +1123,11 @@ async function saveIdolSettings() {
   btn.disabled = true;
   btn.textContent = 'Menyimpan...';
 
+  const emojiVal = (document.getElementById('input-emoji')?.value || '✨').trim().slice(0,4) || '✨';
   const res = await api('save_idol_settings', {
     stage_name: stageName,
     photo_base64: photoBase64,
+    idol_emoji: emojiVal,
   });
 
   btn.disabled = false;
@@ -1133,6 +1163,144 @@ function closeModal(id) {
 // ══════════════════════════════════════
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ══════════════════════════════════════
+// BUBBLE
+// ══════════════════════════════════════
+async function loadBubble() {
+  const el = document.getElementById('bubble-content');
+  if (!idolData) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">📱 Bubble Post</div>
+        <div class="empty"><div class="empty-icon">🎤</div><p>Kamu belum jadi idol. Daftar lewat bot dulu!</p></div>
+      </div>`;
+    return;
+  }
+  if (!groupData || groupData.status !== 'active') {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">📱 Bubble Post</div>
+        <div class="empty"><div class="empty-icon">🌱</div><p>Grupmu belum debut!</p></div>
+      </div>`;
+    return;
+  }
+
+  const emoji = idolData.idol_emoji || '✨';
+  const stage = idolData.stage_name || '?';
+  const now = new Date(Date.now() + 7*3600000);
+  const dateStr = String(now.getDate()).padStart(2,'0') + String(now.getMonth()+1).padStart(2,'0') + String(now.getFullYear()).slice(-2);
+  const hashtag = '#' + stage.toUpperCase().replace(/\s+/g,'');
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">📱 Bubble Post — ${escHtml(groupData.name)}</div>
+      <div style="background:var(--blue1);border-radius:var(--r2);padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2);font-family:monospace;line-height:1.8">
+        <b>Preview format:</b><br>
+        ${dateStr} [CARENT UPDATE]<br><br>
+        [${hashtag}]<br>
+        ${emoji} : [pesan kamu]<br><br>
+        ${emoji} // @CarEntertainment
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tipe Post</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="bubble-type-btns">
+          <button class="btn btn-primary btn-sm" onclick="selectBubbleType('text')" id="btype-text" style="width:100%">💬 Text</button>
+          <button class="btn btn-soft btn-sm" onclick="selectBubbleType('photo')" id="btype-photo" style="width:100%">📸 Foto</button>
+        </div>
+      </div>
+
+      <div class="form-group" id="bubble-photo-group" style="display:none">
+        <label class="form-label">Foto</label>
+        <div class="photo-upload-area" onclick="document.getElementById('bubble-photo-input').click()">
+          <div id="bubble-photo-preview-area">
+            <div class="upload-hint">📸 Tap untuk upload foto<span>JPG/PNG · Maks 5MB</span></div>
+          </div>
+        </div>
+        <input type="file" id="bubble-photo-input" accept="image/*" onchange="previewBubblePhoto(this)">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" id="bubble-msg-label">Pesan</label>
+        <textarea class="form-input" id="bubble-message" rows="4"
+          placeholder="Tulis pesanmu di sini..."
+          style="resize:none;line-height:1.6"></textarea>
+      </div>
+
+      <button class="btn btn-primary" id="bubble-submit-btn" onclick="submitBubble()">
+        📤 Post ke Bubble
+      </button>
+    </div>
+  `;
+}
+
+let bubbleType = 'text';
+let bubblePhotoBase64 = null;
+
+function selectBubbleType(type) {
+  bubbleType = type;
+  const textBtn = document.getElementById('btype-text');
+  const photoBtn = document.getElementById('btype-photo');
+  const photoGroup = document.getElementById('bubble-photo-group');
+  const msgLabel = document.getElementById('bubble-msg-label');
+
+  if (type === 'text') {
+    textBtn.className = 'btn btn-primary btn-sm';
+    photoBtn.className = 'btn btn-soft btn-sm';
+    photoGroup.style.display = 'none';
+    msgLabel.textContent = 'Pesan';
+  } else {
+    textBtn.className = 'btn btn-soft btn-sm';
+    photoBtn.className = 'btn btn-primary btn-sm';
+    photoGroup.style.display = 'block';
+    msgLabel.textContent = 'Caption (opsional)';
+  }
+}
+
+function previewBubblePhoto(input) {
+  if (!input.files?.length) return;
+  const file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) { showToast('Foto terlalu besar (maks 5MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    bubblePhotoBase64 = e.target.result.split(',')[1];
+    const area = document.getElementById('bubble-photo-preview-area');
+    area.innerHTML = `<img src="${e.target.result}" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;display:block">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitBubble() {
+  const message = document.getElementById('bubble-message').value.trim();
+  if (bubbleType === 'text' && !message) { showToast('Tulis pesanmu dulu!'); return; }
+  if (bubbleType === 'photo' && !bubblePhotoBase64) { showToast('Upload foto dulu!'); return; }
+
+  const btn = document.getElementById('bubble-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Posting...';
+
+  const res = await api('bubble_post', {
+    message,
+    bubble_type: bubbleType,
+    photo_base64: bubbleType === 'photo' ? bubblePhotoBase64 : null,
+  });
+
+  btn.disabled = false;
+  btn.textContent = '📤 Post ke Bubble';
+
+  if (res.ok) {
+    showToast('✅ Post berhasil dikirim ke Bubble!');
+    document.getElementById('bubble-message').value = '';
+    bubblePhotoBase64 = null;
+    document.getElementById('bubble-photo-preview-area').innerHTML =
+      '<div class="upload-hint">📸 Tap untuk upload foto<span>JPG/PNG · Maks 5MB</span></div>';
+    if (bubbleType === 'photo') selectBubbleType('text');
+  } else {
+    showToast(res.error || '❌ Gagal post');
+  }
 }
 
 // ══════════════════════════════════════
