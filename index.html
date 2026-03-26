@@ -424,6 +424,29 @@ input[type=file] { display:none; }
 }
 @keyframes spin { to{transform:rotate(360deg)} }
 .loading-state { text-align:center; padding:30px; color:var(--text3); }
+
+/* SHOP ITEM */
+.shop-item {
+  display:flex; gap:12px; align-items:center;
+  padding:12px 0; border-bottom:1px solid var(--blue1);
+}
+.shop-item:last-child { border-bottom:none; }
+.shop-thumb {
+  width:56px; height:56px; border-radius:12px;
+  overflow:hidden; flex-shrink:0;
+  background:var(--blue1);
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; border:2px solid var(--blue2);
+}
+.shop-thumb img { width:100%; height:100%; object-fit:cover; }
+.shop-info { flex:1; }
+.shop-name { font-weight:700; font-size:13px; color:var(--text1); }
+.shop-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+.shop-price {
+  font-family:'Nunito',sans-serif; font-weight:900;
+  font-size:13px; color:var(--blue6);
+  white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -462,6 +485,9 @@ input[type=file] { display:none; }
   <div class="tab" onclick="switchTab('vote')">
     <span class="tab-icon">🗳️</span>Vote
   </div>
+  <div class="tab" onclick="switchTab('shop')">
+    <span class="tab-icon">🛒</span>Shop
+  </div>
   <div class="tab" onclick="switchTab('profile')">
     <span class="tab-icon">👤</span>Profil
   </div>
@@ -472,6 +498,12 @@ input[type=file] { display:none; }
 
 <!-- ═══════════════ HOME ═══════════════ -->
 <div id="page-home" class="page active">
+  <div class="card">
+    <div class="card-title">🎁 Daily Check-in</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Ambil koin harianmu!</p>
+    <button class="btn btn-primary" id="daily-btn" onclick="doDaily()">🎁 Ambil Koin Harian</button>
+  </div>
+
   <div class="card" id="idol-quick" style="display:none">
     <div class="card-title">🌟 Panel Idol</div>
     <div id="idol-activities"></div>
@@ -512,6 +544,18 @@ input[type=file] { display:none; }
     <div id="vote-list">
       <div class="loading-state"><div class="spinner"></div></div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SHOP ═══════════════ -->
+<div id="page-shop" class="page">
+  <div class="card">
+    <div class="card-title">🎴 Photocard</div>
+    <div id="shop-pc-list"><div class="loading-state"><div class="spinner"></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">💿 Album</div>
+    <div id="shop-album-list"><div class="loading-state"><div class="spinner"></div></div></div>
   </div>
 </div>
 
@@ -597,8 +641,8 @@ function showToast(msg, duration = 2500) {
 // ══════════════════════════════════════
 const tabLoaded = {};
 function switchTab(name) {
+  const names = ['home','groups','chart','vote','shop','profile','settings'];
   document.querySelectorAll('.tab').forEach((el, i) => {
-    const names = ['home','groups','chart','vote','profile','settings'];
     el.classList.toggle('active', names[i] === name);
   });
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -610,6 +654,7 @@ function loadTab(name) {
   if (name === 'groups') loadGroups();
   else if (name === 'chart') loadChart();
   else if (name === 'vote') loadVote();
+  else if (name === 'shop') loadShop();
   else if (name === 'profile') loadProfile();
   else if (name === 'settings') loadSettings();
 }
@@ -638,6 +683,13 @@ async function init() {
 // HOME
 // ══════════════════════════════════════
 async function loadHome() {
+  // Cek daily
+  if (userData?.last_daily === todayStr()) {
+    const btn = document.getElementById('daily-btn');
+    btn.textContent = '✅ Sudah Check-in Hari Ini';
+    btn.disabled = true;
+  }
+
   // Idol quick panel
   if (idolData && groupData?.status === 'active') {
     document.getElementById('idol-quick').style.display = 'block';
@@ -700,6 +752,28 @@ function fmtCd(secs) {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   return h > 0 ? `${h}j ${m}m` : `${m}m`;
+}
+
+function todayStr() {
+  const now = new Date();
+  // WIB = UTC+7
+  const wib = new Date(now.getTime() + 7 * 3600000);
+  return wib.toISOString().split('T')[0];
+}
+
+async function doDaily() {
+  const btn = document.getElementById('daily-btn');
+  btn.disabled = true;
+  const res = await api('daily');
+  if (res.ok) {
+    userData.coins = res.coins;
+    document.getElementById('header-coins').textContent = res.coins.toLocaleString();
+    btn.textContent = '✅ Sudah Check-in Hari Ini';
+    showToast(`🎁 +${res.reward} koin!`);
+  } else {
+    showToast(res.error || 'Gagal');
+    btn.disabled = false;
+  }
 }
 
 async function doTrain(key) {
@@ -874,6 +948,61 @@ async function doVote(gid, gname) {
     showToast(`✅ Vote untuk ${gname} berhasil!`);
   } else {
     showToast(res.error || 'Gagal vote');
+  }
+}
+
+// ══════════════════════════════════════
+// SHOP
+// ══════════════════════════════════════
+async function loadShop() {
+  const res = await api('get_shop');
+  const pcEl = document.getElementById('shop-pc-list');
+  const alEl = document.getElementById('shop-album-list');
+
+  if (!res.ok) {
+    pcEl.innerHTML = '<p style="color:var(--text3);font-size:13px">Gagal memuat.</p>';
+    alEl.innerHTML = '<p style="color:var(--text3);font-size:13px">Gagal memuat.</p>';
+    return;
+  }
+
+  // Photocard
+  if (!res.photocards?.length) {
+    pcEl.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon">🎴</div><p>Belum ada photocard</p></div>';
+  } else {
+    pcEl.innerHTML = res.photocards.map(pc => `
+      <div class="shop-item">
+        <div class="shop-thumb">
+          ${pc.photo_file_id
+            ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(pc.photo_file_id)}" onerror="this.parentElement.textContent='🎴'" loading="lazy">`
+            : '🎴'}
+        </div>
+        <div class="shop-info">
+          <div class="shop-name">${escHtml(pc.name)}</div>
+          <div class="shop-sub">by ${escHtml(pc.idol_name || '?')}</div>
+        </div>
+        <div class="shop-price">🪙 ${(pc.price||0).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+
+  // Album
+  if (!res.albums?.length) {
+    alEl.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon">💿</div><p>Belum ada album</p></div>';
+  } else {
+    alEl.innerHTML = res.albums.map(al => `
+      <div class="shop-item">
+        <div class="shop-thumb">
+          ${al.cover_file_id
+            ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(al.cover_file_id)}" onerror="this.parentElement.textContent='💿'" loading="lazy">`
+            : '💿'}
+        </div>
+        <div class="shop-info">
+          <div class="shop-name">${escHtml(al.name)}</div>
+          <div class="shop-sub">by ${escHtml(al.group_name || '?')}</div>
+        </div>
+        <div class="shop-price">🪙 ${(al.price||0).toLocaleString()}</div>
+      </div>
+    `).join('');
   }
 }
 
