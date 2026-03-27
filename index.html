@@ -498,15 +498,17 @@ input[type=file] { display:none; }
 
 <!-- ═══════════════ HOME ═══════════════ -->
 <div id="page-home" class="page active">
-  <div class="card">
-    <div class="card-title">🎁 Daily Check-in</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Ambil koin harianmu!</p>
-    <button class="btn btn-primary" id="daily-btn" onclick="doDaily()">🎁 Ambil Koin Harian</button>
-  </div>
-
   <div class="card" id="idol-quick" style="display:none">
     <div class="card-title">🌟 Panel Idol</div>
     <div id="idol-activities"></div>
+  </div>
+
+  <div class="card" style="background:linear-gradient(135deg,var(--yel),#fff8dc);border:1.5px solid var(--yelA)">
+    <div class="card-title">🎁 Daily & Weekly Reward</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Daily check-in & gaji mingguan hanya tersedia di bot Telegram!</p>
+    <a href="https://t.me/CarEntrobot" style="display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#5ba8fa,#a78bfa);color:white;padding:12px;border-radius:12px;font-family:Nunito,sans-serif;font-weight:800;font-size:13px;text-decoration:none">
+      🤖 Buka Bot Telegram
+    </a>
   </div>
 
   <div class="card">
@@ -517,6 +519,9 @@ input[type=file] { display:none; }
 
 <!-- ═══════════════ GROUPS ═══════════════ -->
 <div id="page-groups" class="page">
+  <div style="margin-bottom:10px;position:relative">
+    <input class="form-input" id="groups-search" type="text" placeholder="🔍 Cari grup..." oninput="filterGroups(this.value)" style="padding-left:14px">
+  </div>
   <div id="groups-list">
     <div class="loading-state"><div class="spinner"></div></div>
   </div>
@@ -544,21 +549,27 @@ input[type=file] { display:none; }
     <div id="vote-list">
       <div class="loading-state"><div class="spinner"></div></div>
     </div>
+    <div id="vote-pagination" style="display:flex;gap:8px;margin-top:12px;justify-content:center"></div>
   </div>
 </div>
 
 <!-- ═══════════════ SHOP ═══════════════ -->
 <div id="page-shop" class="page">
-  <div id="shop-group-list">
-    <div class="loading-state"><div class="spinner"></div></div>
+  <div id="shop-view-groups">
+    <div style="margin-bottom:10px">
+      <input class="form-input" id="shop-search" type="text" placeholder="🔍 Cari grup di shop..." oninput="filterShopGroups(this.value)">
+    </div>
+    <div id="shop-group-list">
+      <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+    <div id="shop-group-pagination" style="display:flex;gap:8px;margin-top:4px;justify-content:center"></div>
   </div>
-</div>
-
-<!-- SHOP CATALOG MODAL -->
-<div class="modal-overlay" id="shop-modal" onclick="closeModal('shop-modal')">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
-    <div id="shop-modal-content"></div>
+  <div id="shop-view-items" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button class="btn btn-soft btn-sm" onclick="backToShopGroups()">⬅️ Kembali</button>
+      <span id="shop-items-title" style="font-family:Nunito,sans-serif;font-weight:900;font-size:15px;color:var(--text1)"></span>
+    </div>
+    <div id="shop-items-content"></div>
   </div>
 </div>
 
@@ -656,8 +667,13 @@ function switchTab(name) {
 function loadTab(name) {
   if (name === 'groups') loadGroups();
   else if (name === 'chart') loadChart();
-  else if (name === 'vote') loadVote();
-  else if (name === 'shop') loadShop();
+  else if (name === 'vote') { votePage = 0; loadVote(0); }
+  else if (name === 'shop') {
+    shopGroupPage = 0;
+    document.getElementById('shop-view-groups').style.display = 'block';
+    document.getElementById('shop-view-items').style.display = 'none';
+    loadShop(0);
+  }
   else if (name === 'profile') loadProfile();
   else if (name === 'settings') loadSettings();
 }
@@ -686,13 +702,6 @@ async function init() {
 // HOME
 // ══════════════════════════════════════
 async function loadHome() {
-  // Cek daily
-  if (userData?.last_daily === todayStr()) {
-    const btn = document.getElementById('daily-btn');
-    btn.textContent = '✅ Sudah Check-in Hari Ini';
-    btn.disabled = true;
-  }
-
   // Idol quick panel
   if (idolData && groupData?.status === 'active') {
     document.getElementById('idol-quick').style.display = 'block';
@@ -794,6 +803,8 @@ async function doTrain(key) {
 // ══════════════════════════════════════
 // GROUPS
 // ══════════════════════════════════════
+let allGroups = [];
+
 async function loadGroups() {
   const res = await api('get_groups');
   const el = document.getElementById('groups-list');
@@ -801,7 +812,20 @@ async function loadGroups() {
     el.innerHTML = `<div class="empty"><div class="empty-icon">🎤</div><p>Belum ada grup yang debut</p></div>`;
     return;
   }
-  el.innerHTML = res.groups.map(g => renderGroupCard(g)).join('');
+  allGroups = res.groups;
+  el.innerHTML = allGroups.map(g => renderGroupCard(g)).join('');
+}
+
+function filterGroups(q) {
+  const el = document.getElementById('groups-list');
+  const filtered = q.trim()
+    ? allGroups.filter(g => g.name.toLowerCase().includes(q.toLowerCase()))
+    : allGroups;
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><p>Grup "${escHtml(q)}" tidak ditemukan</p></div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(g => renderGroupCard(g)).join('');
 }
 
 function renderGroupCard(g) {
@@ -921,19 +945,34 @@ function getWeekNumber(d) {
 // ══════════════════════════════════════
 // VOTE
 // ══════════════════════════════════════
-async function loadVote() {
-  const res = await api('get_vote_data');
+const VOTE_PAGE_SIZE = 8;
+let votePage = 0;
+let voteGroups = [];
+
+async function loadVote(page = 0) {
+  votePage = page;
   const el = document.getElementById('vote-list');
+  const pag = document.getElementById('vote-pagination');
+  if (page === 0) el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+
+  const res = await api('get_vote_data');
   if (!res.ok) { el.innerHTML = '<p>Gagal memuat.</p>'; return; }
 
   document.getElementById('votes-left-badge').textContent = res.votes_left ?? 3;
 
   if (!res.groups?.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">🗳️</div><p>Belum ada grup aktif</p></div>`;
+    pag.innerHTML = '';
     return;
   }
 
-  el.innerHTML = res.groups.map(g => `
+  voteGroups = res.groups;
+  const total = voteGroups.length;
+  const start = page * VOTE_PAGE_SIZE;
+  const end = Math.min(start + VOTE_PAGE_SIZE, total);
+  const pageGroups = voteGroups.slice(start, end);
+
+  el.innerHTML = pageGroups.map(g => `
     <div class="vote-btn" onclick="doVote(${g.id}, '${escHtml(g.name)}')">
       <div>
         <div class="vote-name">🎤 ${escHtml(g.name)}</div>
@@ -942,6 +981,19 @@ async function loadVote() {
       <div class="vote-icon">🗳️</div>
     </div>
   `).join('');
+
+  // Pagination buttons
+  let pagHtml = '';
+  if (page > 0) {
+    pagHtml += `<button class="btn btn-soft btn-sm" onclick="loadVote(${page-1})">⬅️ Prev</button>`;
+  }
+  if (end < total) {
+    pagHtml += `<button class="btn btn-soft btn-sm" onclick="loadVote(${page+1})">Next ➡️</button>`;
+  }
+  if (total > VOTE_PAGE_SIZE) {
+    pagHtml = `<span style="font-size:11px;color:var(--text3);margin:auto 4px">${start+1}-${end} dari ${total}</span>` + pagHtml;
+  }
+  pag.innerHTML = pagHtml;
 }
 
 async function doVote(gid, gname) {
@@ -958,16 +1010,23 @@ async function doVote(gid, gname) {
 // ══════════════════════════════════════
 // SHOP
 // ══════════════════════════════════════
-async function loadShop() {
-  const res = await api('get_shop');
-  const el = document.getElementById('shop-group-list');
+const SHOP_GROUP_PAGE = 6;
+let shopGroupPage = 0;
+let shopGroupMap = {};
+let shopAllGroups = [];
 
+async function loadShop(page = 0) {
+  shopGroupPage = page;
+  const el = document.getElementById('shop-group-list');
+  const pag = document.getElementById('shop-group-pagination');
+  if (page === 0) el.innerHTML = '<div class="loading-state"><div class="spinner"></div></div>';
+
+  const res = await api('get_shop');
   if (!res.ok) {
     el.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:20px">Gagal memuat.</p>';
     return;
   }
 
-  // Kumpulkan semua grup unik dari photocards + albums
   const groupMap = {};
   (res.photocards || []).forEach(pc => {
     const gid = pc.group_id || ('pc_' + pc.idol_id);
@@ -982,13 +1041,33 @@ async function loadShop() {
     groupMap[gid].albums.push(al);
   });
 
-  const groups = Object.values(groupMap);
-  if (!groups.length) {
+  shopGroupMap = groupMap;
+  shopAllGroups = Object.values(groupMap);
+
+  if (!shopAllGroups.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">🛒</div><p>Belum ada item di shop</p></div>';
+    pag.innerHTML = '';
     return;
   }
 
-  el.innerHTML = groups.map(g => `
+  renderShopGroups(shopAllGroups, page);
+}
+
+function renderShopGroups(groups, page = 0) {
+  const el = document.getElementById('shop-group-list');
+  const pag = document.getElementById('shop-group-pagination');
+  const total = groups.length;
+  const start = page * SHOP_GROUP_PAGE;
+  const end = Math.min(start + SHOP_GROUP_PAGE, total);
+  const pageGroups = groups.slice(start, end);
+
+  if (!pageGroups.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>Tidak ditemukan</p></div>';
+    pag.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = pageGroups.map(g => `
     <div class="group-card" onclick="openShopGroup('${escHtml(String(g.id))}')">
       <div class="group-header">
         <div class="group-icon">🎤</div>
@@ -996,22 +1075,47 @@ async function loadShop() {
           <div class="group-name">${escHtml(g.name)}</div>
           <div class="group-agency">🎴 ${g.pcs.length} photocard · 💿 ${g.albums.length} album</div>
         </div>
+        <div style="margin-left:auto;color:var(--blue5);font-size:20px">›</div>
       </div>
     </div>
   `).join('');
 
-  // Simpan data shop buat modal
-  window._shopData = groupMap;
+  let pagHtml = '';
+  if (page > 0) pagHtml += `<button class="btn btn-soft btn-sm" onclick="shopPageGo(${page-1})">⬅️ Prev</button>`;
+  if (end < total) pagHtml += `<button class="btn btn-soft btn-sm" onclick="shopPageGo(${page+1})">Next ➡️</button>`;
+  if (total > SHOP_GROUP_PAGE) {
+    pagHtml = `<span style="font-size:11px;color:var(--text3);margin:auto 4px">${start+1}-${end} dari ${total}</span>` + pagHtml;
+  }
+  pag.innerHTML = pagHtml;
+}
+
+let _shopFilteredGroups = null;
+function filterShopGroups(q) {
+  const trimmed = q.trim();
+  if (!trimmed) {
+    _shopFilteredGroups = null;
+    renderShopGroups(shopAllGroups, 0);
+    return;
+  }
+  _shopFilteredGroups = shopAllGroups.filter(g => g.name.toLowerCase().includes(trimmed.toLowerCase()));
+  renderShopGroups(_shopFilteredGroups, 0);
+}
+
+function shopPageGo(page) {
+  shopGroupPage = page;
+  renderShopGroups(_shopFilteredGroups || shopAllGroups, page);
 }
 
 function openShopGroup(gid) {
-  const g = window._shopData?.[gid];
+  const g = shopGroupMap[gid];
   if (!g) return;
-  const modal = document.getElementById('shop-modal');
-  const content = document.getElementById('shop-modal-content');
+
+  document.getElementById('shop-view-groups').style.display = 'none';
+  document.getElementById('shop-view-items').style.display = 'block';
+  document.getElementById('shop-items-title').textContent = `🎤 ${g.name}`;
 
   const pcHtml = g.pcs.length ? g.pcs.map(pc => `
-    <div class="shop-item" id="pc-${pc.id}">
+    <div class="shop-item">
       <div class="shop-thumb">
         ${pc.photo_file_id
           ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(pc.photo_file_id)}" onerror="this.parentElement.textContent='🎴'" loading="lazy">`
@@ -1020,16 +1124,17 @@ function openShopGroup(gid) {
       <div class="shop-info" style="flex:1">
         <div class="shop-name">${escHtml(pc.name)}</div>
         <div class="shop-sub">by ${escHtml(pc.idol_name || '?')}</div>
+        ${pc.sales_count ? `<div class="shop-sub">📦 ${pc.sales_count}x terjual</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="shop-price">🪙 ${(pc.price||0).toLocaleString()}</div>
-        <button class="btn btn-primary btn-sm" id="buy-pc-${pc.id}" onclick="buyItem('pc',${pc.id},${pc.price},this)">🛒 Beli</button>
+        <button class="btn btn-primary btn-sm" onclick="buyItem('pc',${pc.id},${pc.price},this)">🛒 Beli</button>
       </div>
     </div>
   `).join('') : '<p style="color:var(--text3);font-size:12px;padding:8px 0">Tidak ada photocard</p>';
 
   const alHtml = g.albums.length ? g.albums.map(al => `
-    <div class="shop-item" id="al-${al.id}">
+    <div class="shop-item">
       <div class="shop-thumb">
         ${al.cover_file_id
           ? `<img src="${WORKER_URL}/photo?file_id=${encodeURIComponent(al.cover_file_id)}" onerror="this.parentElement.textContent='💿'" loading="lazy">`
@@ -1038,23 +1143,30 @@ function openShopGroup(gid) {
       <div class="shop-info" style="flex:1">
         <div class="shop-name">${escHtml(al.name)}</div>
         <div class="shop-sub">by ${escHtml(al.group_name || '?')}</div>
+        ${al.sales_count ? `<div class="shop-sub">📦 ${al.sales_count}x terjual</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="shop-price">🪙 ${(al.price||0).toLocaleString()}</div>
-        <button class="btn btn-primary btn-sm" id="buy-al-${al.id}" onclick="buyItem('album',${al.id},${al.price},this)">🛒 Beli</button>
+        <button class="btn btn-primary btn-sm" onclick="buyItem('album',${al.id},${al.price},this)">🛒 Beli</button>
       </div>
     </div>
   `).join('') : '<p style="color:var(--text3);font-size:12px;padding:8px 0">Tidak ada album</p>';
 
-  content.innerHTML = `
-    <div class="modal-title">🎤 ${escHtml(g.name)}</div>
-    <div class="card-title">🎴 Photocard</div>
-    ${pcHtml}
-    <div class="divider"></div>
-    <div class="card-title" style="margin-top:12px">💿 Album</div>
-    ${alHtml}
+  document.getElementById('shop-items-content').innerHTML = `
+    <div class="card">
+      <div class="card-title">🎴 Photocard</div>
+      ${pcHtml}
+    </div>
+    <div class="card" style="margin-top:0">
+      <div class="card-title">💿 Album</div>
+      ${alHtml}
+    </div>
   `;
-  modal.classList.add('open');
+}
+
+function backToShopGroups() {
+  document.getElementById('shop-view-groups').style.display = 'block';
+  document.getElementById('shop-view-items').style.display = 'none';
 }
 
 async function buyItem(type, id, price, btnEl) {
@@ -1063,6 +1175,7 @@ async function buyItem(type, id, price, btnEl) {
     showToast(`❌ Koin tidak cukup! Butuh 🪙${price.toLocaleString()}`);
     return;
   }
+  const orig = btnEl.textContent;
   btnEl.disabled = true;
   btnEl.textContent = '...';
   const action = type === 'pc' ? 'buy_pc' : 'buy_album';
@@ -1071,13 +1184,18 @@ async function buyItem(type, id, price, btnEl) {
   if (res.ok) {
     userData.coins = res.coins;
     document.getElementById('header-coins').textContent = res.coins.toLocaleString();
-    btnEl.textContent = '✅ Dibeli';
-    btnEl.style.background = 'var(--mint)';
-    btnEl.style.color = 'var(--mintA)';
     showToast('✅ Berhasil dibeli!');
+    // Flash green briefly then restore — allow re-buy
+    btnEl.textContent = '✅';
+    btnEl.style.background = 'var(--mintA)';
+    setTimeout(() => {
+      btnEl.textContent = '🛒 Beli';
+      btnEl.style.background = '';
+      btnEl.disabled = false;
+    }, 1200);
   } else {
     btnEl.disabled = false;
-    btnEl.textContent = '🛒 Beli';
+    btnEl.textContent = orig;
     showToast(res.error || 'Gagal beli');
   }
 }
@@ -1312,6 +1430,7 @@ window.addEventListener('load', init);
 </script>
 </body>
 </html>
+
 
 
 
