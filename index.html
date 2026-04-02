@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CarEntertainment</title>
+<title>Car Entertainment</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -794,7 +794,21 @@ async function doTrain(key) {
   if (res.ok) {
     idolData = res.idol;
     renderActivities();
-    showToast(`✅ ${res.activity} selesai! +${res.pop} popularity`);
+
+    // ── Tambah pts music show ke grup aktif ──────────────────────
+    let ptsMsg = '';
+    const gid = groupData?.id;
+    if (gid && groupData?.status === 'active' && res.pop > 0) {
+      const vRes = await api('vote_shop', { group_id: gid, pts: res.pop });
+      if (vRes.ok) {
+        ptsMsg = ` · +${res.pop} pts chart!`;
+        tabLoaded['chart'] = false;
+        tabLoaded['home']  = false;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────
+
+    showToast(`✅ ${res.activity} selesai! +${res.pop} popularity${ptsMsg}`);
   } else {
     showToast(res.error || 'Gagal');
   }
@@ -1128,7 +1142,7 @@ function openShopGroup(gid) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="shop-price">🪙 ${(pc.price||0).toLocaleString()}</div>
-        <button class="btn btn-primary btn-sm" onclick="buyItem('pc',${pc.id},${pc.price},this)">🛒 Beli</button>
+        <button class="btn btn-primary btn-sm" onclick="buyItem('pc',${pc.id},${pc.price},this,'${escHtml(String(pc.group_id||''))}','${escHtml(pc.group_name||pc.idol_name||'')}')">🛒 Beli</button>
       </div>
     </div>
   `).join('') : '<p style="color:var(--text3);font-size:12px;padding:8px 0">Tidak ada photocard</p>';
@@ -1147,7 +1161,7 @@ function openShopGroup(gid) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <div class="shop-price">🪙 ${(al.price||0).toLocaleString()}</div>
-        <button class="btn btn-primary btn-sm" onclick="buyItem('album',${al.id},${al.price},this)">🛒 Beli</button>
+        <button class="btn btn-primary btn-sm" onclick="buyItem('album',${al.id},${al.price},this,'${escHtml(String(al.group_id||''))}','${escHtml(al.group_name||'')}')">🛒 Beli</button>
       </div>
     </div>
   `).join('') : '<p style="color:var(--text3);font-size:12px;padding:8px 0">Tidak ada album</p>';
@@ -1169,7 +1183,11 @@ function backToShopGroups() {
   document.getElementById('shop-view-items').style.display = 'none';
 }
 
-async function buyItem(type, id, price, btnEl) {
+// pts yang diberikan ke grup per pembelian
+const SHOP_PTS_PC    = 5;   // pts per beli photocard
+const SHOP_PTS_ALBUM = 15;  // pts per beli album
+
+async function buyItem(type, id, price, btnEl, groupId = '', groupName = '') {
   if (!userData) { showToast('Login dulu!'); return; }
   if ((userData.coins || 0) < price) {
     showToast(`❌ Koin tidak cukup! Butuh 🪙${price.toLocaleString()}`);
@@ -1184,7 +1202,22 @@ async function buyItem(type, id, price, btnEl) {
   if (res.ok) {
     userData.coins = res.coins;
     document.getElementById('header-coins').textContent = res.coins.toLocaleString();
-    showToast('✅ Berhasil dibeli!');
+
+    // ── Tambah pts music show untuk grup terkait ──────────────────
+    const shopPts = type === 'pc' ? SHOP_PTS_PC : SHOP_PTS_ALBUM;
+    let ptsMsg = '';
+    if (groupId) {
+      const vRes = await api('vote_shop', { group_id: groupId, pts: shopPts });
+      if (vRes.ok) {
+        ptsMsg = ` · +${shopPts} pts chart${groupName ? ' ' + groupName : ''}!`;
+        // refresh chart cache supaya home & chart tab ikut update
+        tabLoaded['chart'] = false;
+        tabLoaded['home']  = false;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────
+
+    showToast('✅ Berhasil dibeli!' + ptsMsg);
     // Flash green briefly then restore — allow re-buy
     btnEl.textContent = '✅';
     btnEl.style.background = 'var(--mintA)';
@@ -1430,6 +1463,7 @@ window.addEventListener('load', init);
 </script>
 </body>
 </html>
+
 
 
 
